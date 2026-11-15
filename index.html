@@ -1,1 +1,119 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MAXMUDJON AGRO</title><style>:root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#183326;background:#f4f7f3}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1050px;margin:auto;padding:22px 14px 70px}header{background:#153f2c;color:white;padding:22px 16px;border-radius:18px}h1{font-size:24px;margin:0}header p{opacity:.75;margin:7px 0 0}.tabs{display:flex;gap:7px;margin:18px 0;overflow:auto}.tabs button{white-space:nowrap}.btn,button{border:0;border-radius:11px;padding:11px 14px;font-weight:650;cursor:pointer}.btn{background:#1b6b45;color:white}.tabs button{background:#e2ebe3;color:#214b35}.tabs button.active{background:#1b6b45;color:white}.card{background:white;border:1px solid #dfe9e0;border-radius:15px;padding:16px;margin:12px 0;box-shadow:0 2px 9px #173b2610}.row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}h2{font-size:19px;margin:0 0 10px}.muted{color:#66796c;font-size:13px}input,select,textarea{width:100%;padding:11px;border:1px solid #d0ddd3;border-radius:9px;background:white;font:inherit}label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.wide{grid-column:1/-1}.pill{background:#e9f4e8;color:#24623d;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:650}.danger{background:#fff0ee;color:#a52d20}.ghost{background:#edf3ee;color:#28513a}.hidden{display:none}.empty{text-align:center;padding:40px 15px;color:#718075}.stat{font-size:28px;font-weight:750}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar input{flex:1;min-width:170px}.note{background:#fff9e7;border:1px solid #f1e1ad;border-radius:11px;padding:12px;font-size:13px;margin:12px 0}@media(max-width:550px){.fields{grid-template-columns:1fr}.wide{grid-column:auto}}</style></head><body><main class="wrap"><header><h1>🌿 MAXMUDJON AGRO</h1><p>Управление заказами и поставками</p></header><div class="note">HTML-версия: данные сохраняются только в этом браузере. Другой сотрудник их не увидит; почта пока не подключена.</div><nav class="tabs"><button class="active" data-tab="orders">📦 Заказы</button><button data-tab="add">＋ Новый заказ</button><button data-tab="mail">✉️ Почта X5</button><button data-tab="stats">📊 Статистика</button></nav><section id="orders"><div class="card"><div class="row"><h2>Реестр заказов</h2><span class="pill" id="count">0 заказов</span></div><div class="toolbar"><input id="search" placeholder="Поиск по заказу, PLU, товару"><button class="btn" id="new">Добавить</button></div></div><div id="list"></div></section><section id="add" class="hidden"><div class="card"><h2 id="formtitle">Новый заказ</h2><form id="form"><div class="fields" id="fields"></div><div class="toolbar" style="margin-top:18px"><button class="btn" type="submit">Сохранить заказ</button><button type="button" class="ghost" id="cancel">Отмена</button></div></form></div></section><section id="mail" class="hidden"><div class="card"><h2>Письма X5 / RVI</h2><p class="muted">Автоматическое чтение Яндекс Почты и распознавание заказов пока не работает в HTML-версии. В серверной версии можно будет проверять распознанные данные перед сохранением.</p><div class="note">Не вводи здесь пароль от почты. Для подключения почты нужен защищённый сервер.</div></div></section><section id="stats" class="hidden"><div class="card"><h2>Статистика</h2><div class="fields"><div><div class="muted">Всего заказов</div><div class="stat" id="total">0</div></div><div><div class="muted">Всего коробок</div><div class="stat" id="boxes">0</div></div><div><div class="muted">Всего паллет</div><div class="stat" id="pallets">0</div></div><div><div class="muted">В пути</div><div class="stat" id="transit">0</div></div></div></div><div class="card"><h2>Резервная копия</h2><p class="muted">Сохрани файл с заказами, чтобы не потерять данные при очистке браузера.</p><button class="btn" id="export">Скачать JSON</button> <label style="margin-top:12px">Восстановить из JSON<input type="file" id="import" accept="application/json,.json"></label></div></section></main><script>const defs=[['spec','Номер заказа / спецификации'],['plu','PLU'],['product','Наименование товара'],['boxes','Коробки'],['pallets','Паллеты'],['weight','Вес, кг'],['etd','ETD'],['eta','ETA'],['etadc','ETA РЦ'],['vehicle','Машина'],['driver','Водитель'],['invoice','Инвойс'],['zost','ЗОСТ'],['status','Статус'],['receiving','Приёмка'],['claims','Претензии'],['notes','Примечания']];const statuses=['Новый','На проверке','Подтверждён','В пути','Прибыл','Закрыт','Претензия'];let orders=[];try{orders=JSON.parse(localStorage.getItem('maxmudjon_orders_v1')||'[]');if(!Array.isArray(orders))orders=[]}catch(e){}let edit=-1;const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function save(){localStorage.setItem('maxmudjon_orders_v1',JSON.stringify(orders));render()}function tab(t){document.querySelectorAll('section').forEach(s=>s.classList.toggle('hidden',s.id!==t));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));if(t==='stats')render()}document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('fields').innerHTML=defs.map(([k,l])=>'<div class="'+(['spec','product','notes','claims'].includes(k)?'wide':'')+'"><label for="f_'+k+'">'+l+'</label>'+(k==='status'?'<select id="f_status">'+statuses.map(x=>'<option>'+x+'</option>').join('')+'</select>':k==='notes'||k==='claims'?'<textarea rows="2" id="f_'+k+'"></textarea>':'<input id="f_'+k+'" '+(['boxes','pallets','weight'].includes(k)?'inputmode="decimal"':'')+' autocomplete="off">')+'</div>').join('');function form(i=-1){edit=i;$('formtitle').textContent=i<0?'Новый заказ':'Редактирование заказа';defs.forEach(([k])=>{$('f_'+k).value=i<0?(k==='status'?'Новый':''):(orders[i][k]||'')});tab('add')}function render(){let q=$('search').value.trim().toLowerCase();let filtered=orders.map((o,i)=>({...o,_i:i})).filter(o=>[o.spec,o.plu,o.product,o.vehicle,o.invoice].some(v=>String(v||'').toLowerCase().includes(q)));$('count').textContent=orders.length+' заказов';$('list').innerHTML=filtered.length?filtered.map(o=>'<div class="card"><div class="row"><strong>'+esc(o.product||'Товар не указан')+'</strong><span class="pill">'+esc(o.status||'Новый')+'</span></div><p class="muted">'+esc(o.spec||'Без номера')+' · PLU '+esc(o.plu||'—')+'</p><div class="row"><span>📦 '+esc(o.boxes||'—')+' коробок · '+esc(o.pallets||'—')+' паллет</span><span>ETA: '+esc(o.eta||'—')+'</span></div><div class="toolbar" style="margin-top:12px"><button class="ghost" onclick="form('+o._i+')">Редактировать</button><button class="danger" onclick="removeOrder('+o._i+')">Удалить</button></div></div>').join(''):'<div class="card empty">Заказов пока нет. Нажми «Добавить», чтобы создать первый.</div>';$('total').textContent=orders.length;$('boxes').textContent=orders.reduce((s,o)=>s+(parseFloat(String(o.boxes||'0').replace(',','.'))||0),0).toLocaleString('ru-RU');$('pallets').textContent=orders.reduce((s,o)=>s+(parseFloat(String(o.pallets||'0').replace(',','.'))||0),0).toLocaleString('ru-RU');$('transit').textContent=orders.filter(o=>o.status==='В пути').length}window.removeOrder=i=>{if(confirm('Удалить этот заказ?')){orders.splice(i,1);save()}};$('form').onsubmit=e=>{e.preventDefault();const o=Object.fromEntries(defs.map(([k])=>[k,$('f_'+k).value.trim()]));if(!o.spec&&!o.product){alert('Укажи номер заказа или товар');return}if(edit<0)orders.unshift(o);else orders[edit]=o;save();tab('orders')};$('new').onclick=()=>form();$('cancel').onclick=()=>tab('orders');$('search').oninput=render;$('export').onclick=()=>{let blob=new Blob([JSON.stringify(orders,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='maxmudjon-orders.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};$('import').onchange=async e=>{try{let x=JSON.parse(await e.target.files[0].text());if(!Array.isArray(x))throw Error();if(confirm('Заменить текущие заказы данными из файла?')){orders=x;save()}}catch(e){alert('Не удалось прочитать JSON-файл')}};render();</script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAXMUDJON AGRO — учёт заказов</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--green:#176b45;--dark:#123d2b;--bg:#f3f7f3;--line:#dce7de;--muted:#64756a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px Arial,sans-serif;color:#173c2b}
+header{background:var(--dark);color:white;padding:22px max(20px,calc((100% - 1180px)/2))}
+header h1{margin:0 0 7px;font-size:25px}header p{margin:0;color:#d5e6da}
+main{max-width:1180px;margin:22px auto;padding:0 16px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 3px 12px #183c2b0b}
+.hidden{display:none!important}.muted{color:var(--muted)}.notice{padding:12px 14px;border-radius:10px;background:#fff8e7;border:1px solid #f1dda4;color:#6b5417;margin-bottom:16px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd9ce;border-radius:9px;font:inherit;background:white;color:#173c2b}
+label{display:block;font-size:13px;color:#53665a;margin:0 0 6px}
+button{border:0;border-radius:9px;padding:11px 16px;background:var(--green);color:white;font-weight:700;cursor:pointer}
+button.secondary{background:#e6efe8;color:var(--dark)}button.danger{background:#a73535}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row button{flex:0 0 auto}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:11px;border-bottom:1px solid #e6eee8;vertical-align:top}th{font-size:13px;color:#5a6b60;background:#f8faf8}
+.tablewrap{overflow:auto}.count{background:#eaf4eb;border-radius:30px;padding:8px 12px;font-weight:bold}
+#message{margin-top:10px;color:#9b3b22;white-space:pre-wrap}
+small{color:var(--muted)}
+@media(max-width:700px){.grid{grid-template-columns:1fr 1fr}header h1{font-size:21px}}
+</style>
+</head>
+<body>
+<header><h1>🌿 MAXMUDJON AGRO</h1><p>Управление заказами и поставками</p></header>
+<main>
+<div id="login" class="panel">
+<h2>Вход в приложение</h2>
+<p class="muted">Используйте общий рабочий аккаунт MAXMUDJON AGRO.</p>
+<div class="grid">
+<div><label>Email</label><input id="email" type="email" autocomplete="username" value="sales.mominovagro@yandex.ru"></div>
+<div><label>Пароль приложения</label><input id="password" type="password" autocomplete="current-password" placeholder="Пароль аккаунта Supabase"></div>
+<div style="display:flex;align-items:end"><button id="loginBtn">Войти</button></div>
+</div><div id="loginMsg"></div>
+</div>
+<div id="app" class="hidden">
+<div class="notice">Данные заказов загружаются из общей базы Supabase. Все вошедшие под этим аккаунтом сотрудники видят один и тот же реестр.</div>
+<div class="panel">
+<div class="row"><div><h2 style="margin:0">Реестр заказов</h2><small id="who"></small></div><span class="count" id="count">0 заказов</span><button id="logoutBtn" class="secondary">Выйти</button></div>
+<div class="actions"><input id="search" placeholder="Поиск по заказу, PLU, товару, инвойсу"><button id="newBtn">＋ Новый заказ</button><button id="refreshBtn" class="secondary">Обновить</button></div>
+<div class="tablewrap"><table><thead><tr><th>Спецификация</th><th>PLU</th><th>Товар</th><th>Коробки</th><th>Паллеты</th><th>Вес</th><th>ETD</th><th>ETA</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="orders"></tbody></table></div>
+<p id="empty" class="muted">Заказов пока нет.</p>
+</div>
+<div id="editor" class="panel hidden">
+<h2 id="editorTitle">Новый заказ</h2>
+<form id="orderForm">
+<input type="hidden" id="orderId">
+<div class="grid" id="fields"></div>
+<div class="actions"><button type="submit">Сохранить заказ</button><button type="button" id="cancelBtn" class="secondary">Отмена</button></div>
+<div id="formMsg"></div>
+</form>
+</div>
+</div>
+</main>
+<script>
+const SUPABASE_URL = 'https://exhpojlkqyvgnzksnmx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_GY_UtFG_txXeybQUIwP-eg_q0zt1ylj';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const columns = [
+ ['spec','Спецификация'],['plu','PLU'],['product','Товар'],['boxes','Коробки'],['pallets','Паллеты'],['weight','Вес'],
+ ['etd','ETD'],['eta','ETA'],['etadc','ETA РЦ'],['vehicle','Машина'],['driver','Водитель'],['invoice','Инвойс'],
+ ['zost','ЗОСТ'],['status','Статус'],['receiving','Приёмка'],['claims','Претензии'],['notes','Комментарий']
+];
+let currentUser=null, allOrders=[];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showMsg(id,msg){$(id).textContent=msg||'';}
+function renderFields(row={}) {
+ $('fields').innerHTML=columns.map(([key,label])=>`<div><label>${label}</label><input id="f_${key}" value="${esc(row[key]??'')}" ${['etd','eta','etadc'].includes(key)?'placeholder="ГГГГ-ММ-ДД"':''}></div>`).join('');
+}
+async function loadOrders(){
+ $('orders').innerHTML='<tr><td colspan="10">Загружаем…</td></tr>';
+ const {data,error}=await db.from('orders').select('*').order('created_at',{ascending:false});
+ if(error){$('orders').innerHTML='';showMsg('formMsg','Ошибка загрузки: '+error.message);return;}
+ allOrders=data||[];renderOrders();
+}
+function renderOrders(){
+ const q=$('search').value.toLowerCase();
+ const rows=allOrders.filter(o=>columns.some(([k])=>String(o[k]??'').toLowerCase().includes(q)));
+ $('count').textContent=`${rows.length} заказов`;
+ $('empty').classList.toggle('hidden',rows.length>0);
+ $('orders').innerHTML=rows.map(o=>`<tr>
+ <td>${esc(o.spec)}</td><td>${esc(o.plu)}</td><td>${esc(o.product)}</td><td>${esc(o.boxes)}</td><td>${esc(o.pallets)}</td><td>${esc(o.weight)}</td><td>${esc(o.etd)}</td><td>${esc(o.eta)}</td><td>${esc(o.status)}</td>
+ <td><button class="secondary" onclick="editOrder(${o.id})">Изменить</button> <button class="danger" onclick="deleteOrder(${o.id})">Удалить</button></td></tr>`).join('');
+}
+function openEditor(row){renderFields(row||{});$('orderId').value=row?.id||'';$('editorTitle').textContent=row?'Изменить заказ':'Новый заказ';$('editor').classList.remove('hidden');$('formMsg').textContent='';$('editor').scrollIntoView({behavior:'smooth'});}
+window.editOrder=id=>{const row=allOrders.find(x=>x.id===id);if(row)openEditor(row);};
+window.deleteOrder=async id=>{if(!confirm('Удалить заказ?'))return;const {error}=await db.from('orders').delete().eq('id',id);if(error)alert('Не удалось удалить: '+error.message);else await loadOrders();};
+$('newBtn').onclick=()=>openEditor();$('cancelBtn').onclick=()=>$('editor').classList.add('hidden');$('search').oninput=renderOrders;$('refreshBtn').onclick=loadOrders;
+$('orderForm').onsubmit=async e=>{
+ e.preventDefault();const id=$('orderId').value;
+ const payload={};columns.forEach(([k])=>payload[k]=$('f_'+k).value.trim());
+ if(!payload.status)payload.status='Новый';
+ let result;
+ if(id){payload.updated_by=currentUser.id;result=await db.from('orders').update(payload).eq('id',id);}
+ else{payload.created_by=currentUser.id;payload.updated_by=currentUser.id;result=await db.from('orders').insert(payload);}
+ if(result.error){showMsg('formMsg','Ошибка сохранения: '+result.error.message);return;}
+ $('editor').classList.add('hidden');await loadOrders();
+};
+$('loginBtn').onclick=async()=>{
+ showMsg('loginMsg','Входим…');
+ const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+ if(error){showMsg('loginMsg','Не удалось войти: '+error.message);return;}
+ currentUser=data.user;await enterApp();
+};
+async function enterApp(){
+ $('login').classList.add('hidden');$('app').classList.remove('hidden');$('who').textContent='Вход выполнен: '+(currentUser.email||'пользователь');await loadOrders();
+}
+$('logoutBtn').onclick=async()=>{await db.auth.signOut();currentUser=null;$('app').classList.add('hidden');$('login').classList.remove('hidden');$('password').value='';};
+(async()=>{const {data}=await db.auth.getSession();if(data.session){currentUser=data.session.user;await enterApp();}})();
+</script>
+</body>
+</html>
