@@ -59,6 +59,30 @@ tbody tr:hover{background:#f1f4e8}
 #login{max-width:780px;margin:35px auto;border-top:4px solid #d5ad63}
 @media(max-width:760px){header::after{opacity:.32;width:55%}header{padding:24px 18px}.panel{padding:16px}.tabs{gap:6px;padding:8px}.tabs button{font-size:12px;padding:10px}.tablewrap{max-height:65vh}}
 
+
+/* Fresh Export layout refinement */
+html,body{width:100%;max-width:100%;margin:0;overflow-x:clip}
+main{display:block;width:100%!important;max-width:100%!important;margin:0 auto!important;padding:24px clamp(12px,2vw,32px);min-width:0}
+#app,#app>section,.panel,.tablewrap,.row,.actions{min-width:0;max-width:100%}
+#app>section{width:100%}
+.tablewrap{width:100%;overflow:auto;overscroll-behavior-inline:contain}
+.tablewrap table{min-width:max-content;width:100%}
+#ordersTab .tablewrap table{min-width:3400px}
+.tablewrap th:nth-child(2),#orders td:nth-child(2){position:static}
+header{padding:30px clamp(18px,4vw,60px);min-height:140px;background:linear-gradient(90deg,#123b2b 0%,#123b2b 37%,#123b2bd9 57%,#123b2b35 100%),url('https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=1800&q=85') center 52%/cover}
+header::after{display:none}
+header h1,header p{margin-left:0;transform:none}
+header h1{font-size:clamp(23px,3vw,34px)}
+#app:not(.hidden){display:grid;grid-template-columns:205px minmax(0,1fr);gap:14px 20px;align-items:start}
+#app>.notice,#app>.row{grid-column:1/-1;margin:0!important}
+#app>.tabs{grid-column:1;grid-row:3;display:flex;flex-direction:column;align-items:stretch;position:sticky;top:12px;background:#153f2d;padding:12px;margin:0;border:none;box-shadow:0 8px 24px #153f2d15}
+#app>.tabs button{text-align:left;background:transparent;color:#e7eee4;padding:12px 10px;font-size:13px}
+#app>.tabs button.active{background:#387452;box-shadow:inset 3px 0 #d5ad63}
+#app>section{grid-column:2;grid-row:3}
+#buyerFilter{width:auto;max-width:100%;min-width:145px}
+.actions input{min-width:0}
+@media(max-width:850px){#app:not(.hidden){display:block}#app>.notice,#app>.row{margin-bottom:12px!important}#app>.tabs{position:static;flex-direction:row;flex-wrap:wrap;margin-bottom:16px}#app>.tabs button{padding:9px 10px;font-size:12px}header{min-height:115px;padding:24px 16px}main{padding:14px 10px}}
+
 </style>
 </head>
 <body>
