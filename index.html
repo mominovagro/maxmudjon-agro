@@ -132,7 +132,7 @@ header h1{font-size:clamp(23px,3vw,34px)}
   <section id="mailTab" class="hidden">
     <div class="panel"><h2>Почта X5 / RVI</h2>
       <p class="muted">Раздел подготовлен для будущего подключения рабочей почты и распознавания заказов.</p>
-      <div class="notice warn">Почта пока не подключена. Не вводите здесь пароль от Яндекс Почты. Когда будем подключать почту, сделаем это отдельно через защищённый сервер и с ручной проверкой распознанных данных.</div>
+      <div class="notice">Проверка защищённого подключения к Яндекс Почте. Пароль вводить не нужно.</div><button type="button" id="mailTestBtn">Проверить подключение</button><p id="mailTestResult" role="status"></p>
     </div>
   </section>
 
@@ -294,5 +294,13 @@ db.auth.onAuthStateChange((event,session)=>{
  if(data.session)await enterApp(data.session.user);
 })();
 </script>
-</body>
+<script>
+document.getElementById('mailTestBtn').addEventListener('click',async function(){
+const out=document.getElementById('mailTestResult');this.disabled=true;out.textContent='Проверяем подключение…';
+try{const {data,error}=await db.functions.invoke('yandex-mail-test',{body:{}});
+if(error){let stage='';try{stage=(await error.context.json()).stage||''}catch{};throw new Error(stage||'Ошибка запроса');}
+out.textContent=data.ok?'Подключение успешно. Писем во входящих: '+(data.inbox_count??'не определено'):'Подключение не удалось: '+(data.stage||'неизвестная ошибка');
+}catch(e){out.textContent='Не удалось подключиться: '+e.message;}finally{this.disabled=false;}
+});
+</script></body>
 </html>
