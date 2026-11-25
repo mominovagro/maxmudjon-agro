@@ -132,7 +132,7 @@ header h1{font-size:clamp(23px,3vw,34px)}
   <section id="mailTab" class="hidden">
     <div class="panel"><h2>Почта X5 / RVI</h2>
       <p class="muted">Раздел подготовлен для будущего подключения рабочей почты и распознавания заказов.</p>
-      <div class="notice">Проверка защищённого подключения к Яндекс Почте. Пароль вводить не нужно.</div><button type="button" id="mailTestBtn">Проверить подключение</button><p id="mailTestResult" role="status"></p>
+      <div class="notice">Проверка защищённого подключения к Яндекс Почте. Пароль вводить не нужно.</div><button type="button" id="mailTestBtn">Проверить подключение</button><p id="mailTestResult" role="status"></p><button type="button" id="mailListBtn">Загрузить входящие письма</button><p id="mailListStatus" role="status"></p><div id="mailListRows"></div>
     </div>
   </section>
 
@@ -301,6 +301,15 @@ try{const {data,error}=await db.functions.invoke('yandex-mail-test',{body:{}});
 if(error){let stage='';try{stage=(await error.context.json()).stage||''}catch{};throw new Error(stage||'Ошибка запроса');}
 out.textContent=data.ok?'Подключение успешно. Писем во входящих: '+(data.inbox_count??'не определено'):'Подключение не удалось: '+(data.stage||'неизвестная ошибка');
 }catch(e){out.textContent='Не удалось подключиться: '+e.message;}finally{this.disabled=false;}
+});
+</script><script>
+document.getElementById('mailListBtn').addEventListener('click',async function(){
+const status=document.getElementById('mailListStatus'),rows=document.getElementById('mailListRows');this.disabled=true;rows.replaceChildren();status.textContent='Загрузка писем…';
+function decode(s){return String(s||'').replace(/(=\?[^?]+\?[bq]\?[^?]*\?=)\s+(?==\?)/gi,'$1').replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi,(all,charset,mode,value)=>{try{const raw=mode.toLowerCase()==='b'?atob(value):value.replace(/_/g,' ').replace(/=([0-9a-f]{2})/gi,(_,h)=>String.fromCharCode(parseInt(h,16)));return new TextDecoder(charset).decode(Uint8Array.from(raw,c=>c.charCodeAt(0)));}catch{return all;}});}
+try{const {data,error}=await db.functions.invoke('yandex-mail-list',{body:{}});if(error){let stage='';try{stage=(await error.context.json()).stage||''}catch{}throw Error(stage||error.message);}
+if(!data?.ok)throw Error(data?.stage||'Ошибка');status.textContent='Загружено '+data.messages.length+' из '+data.inbox_count;
+for(const m of data.messages){const item=document.createElement('div');item.className='panel';const title=document.createElement('strong');title.textContent=decode(m.subject)||'(Без темы)';const from=document.createElement('p');from.textContent=decode(m.from);const date=document.createElement('small');date.textContent=m.date||'';item.append(title,from,date);rows.append(item);}
+}catch(e){status.textContent='Ошибка загрузки: '+e.message;}finally{this.disabled=false;}
 });
 </script></body>
 </html>
