@@ -53,7 +53,7 @@ small{color:var(--muted)}.field-wide{grid-column:span 2}.stat{font-size:28px;fon
     <button data-tab="formTab" id="newTabBtn">＋ Новый заказ</button>
     <button data-tab="mailTab">✉️ Почта X5</button>
     <button data-tab="statsTab">📊 Статистика</button>
-  </nav>
+  <button data-tab="receivingTab">Приёмка</button><button data-tab="claimTab">Претензии</button><button data-tab="contractTab">Контракты</button><button data-tab="documentTab">Документы</button><button data-tab="historyTab">История изменений</button><button data-tab="trashTab">Корзина</button></nav>
 
   <section id="ordersTab">
     <div class="panel">
@@ -82,7 +82,7 @@ small{color:var(--muted)}.field-wide{grid-column:span 2}.stat{font-size:28px;fon
     </div>
   </section>
 
-  <section id="statsTab" class="hidden">
+  <section id="receivingTab" class="hidden"><div class="panel"><h2>Приёмка</h2><div id="receivingContent"></div></div></section><section id="claimTab" class="hidden"><div class="panel"><h2>Претензии</h2><div id="claimContent"></div></div></section><section id="contractTab" class="hidden"><div class="panel"><h2>Контракты</h2><div id="contractContent"></div></div></section><section id="documentTab" class="hidden"><div class="panel"><h2>Документы</h2><div id="documentContent"></div></div></section><section id="historyTab" class="hidden"><div class="panel"><h2>История изменений</h2><div id="historyContent"></div></div></section><section id="trashTab" class="hidden"><div class="panel"><h2>Корзина</h2><div id="trashContent"></div></div></section><section id="statsTab" class="hidden">
     <div class="panel"><h2>Статистика</h2>
       <div class="statgrid">
         <div class="statbox"><small>Всего заказов</small><div class="stat" id="total">0</div></div>
@@ -105,11 +105,42 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, 
 const $ = id => document.getElementById(id);
 const columns = [["buyer","Покупатель"],["plu","PLU"],["spec","Номер заказа"],["product","Товар"],["etd","Дата отгрузки план"],["etadc","ETA РЦ"],["dc","РЦ"],["status","Статус машины"],["invoice_date","Дата инвойса / отгрузки по документам"],["invoice","Инвойс"],["zost","ZOST"],["weight","Факт отгрузки по инвойсу, кг"],["price","Цена, USD/кг"],["accepted_weight","Принято, кг"],["waste_pct","Отход, %"],["nonstandard_pct","Нестандарт, %"],["vehicle","Автомобиль / прицеп"],["driver","ФИО водителя"],["driver_phone","Телефон водителя"],["stickers","Стикеры (короб / паллета)"],["notes","Документы / примечания"],["nonstandard_source","Источник нестандарта"],["customs","Место растаможки (ТО)"],["surveyor","Сюрвейерская компания"],["inspection_type","Тип инспекции"],["nomination_status","Статус номинации"]];
 const displayColumns = [...columns.slice(1,13), ['amount','Сумма фактическая, USD'], ...columns.slice(13)];
+
+const sectionKinds=['receiving','claim','contract','document','history','trash'];
+const recordFields={
+receiving:['Номер заказа','Инвойс','ZOST','Дата приёмки','Отгружено кг','Принято кг','Нестандарт, %','Недостача кг','Отход, %','Акт / примечания'],
+claim:['Номер заказа','Инвойс','Дата','Номер претензии','Причина','Заявлено','Удержано','Статус','Примечания'],
+contract:['Контрагент','Номер контракта','Дата подписания','Срок действия','Отсрочка платежа','Валюта','Условия поставки','Банковские реквизиты','Статус','Тип документа','Комментарии'],
+document:['Номер заказа','Тип документа','Номер документа','Дата','Примечания']};
+let sectionRows={};
+async function loadSection(k){
+ if(!currentUser)return;
+ const root=$(k+'Content');root.textContent='Загрузка…';
+ try{
+ if(k==='history'){
+ const {data,error}=await db.from('register_history').select('*').order('changed_at',{ascending:false}).limit(200);if(error)throw error;
+ root.innerHTML=(data||[]).map(o=>'<details><summary>'+esc(new Date(o.changed_at).toLocaleString('ru-RU')+' · '+o.entity+' #'+o.entity_id+' · '+o.action)+'</summary><pre style="white-space:pre-wrap">'+esc(JSON.stringify({до:o.before_data,после:o.after_data},null,2))+'</pre></details>').join('')||'История пока пуста';return;}
+ if(k==='trash'){
+ const results=await Promise.all(['orders','register_records'].map(t=>db.from(t).select('*').not('deleted_at','is',null)));for(const r of results)if(r.error)throw r.error;
+ root.innerHTML=results.flatMap((r,i)=>(r.data||[]).map(o=>'<p>'+esc(o.spec||o.data?.['Номер заказа']||o.data?.['Номер контракта']||o.kind||o.id)+' — '+esc(o.deleted_at)+' <button data-restore="'+o.id+'" data-table="'+(i?'register_records':'orders')+'">Восстановить</button></p>')).join('')||'Корзина пуста';
+ root.onclick=async e=>{const b=e.target.closest('[data-restore]');if(!b)return;const payload={deleted_at:null};if(b.dataset.table==='orders')payload.updated_by=currentUser.id;const {error}=await db.from(b.dataset.table).update(payload).eq('id',b.dataset.restore);if(error)alert(error.message);else{loadSection(k);loadOrders();}};return;}
+ const {data,error}=await db.from('register_records').select('*').eq('kind',k).is('deleted_at',null).order('created_at',{ascending:false});if(error)throw error;sectionRows[k]=data||[];
+ root.innerHTML='<button data-new>Добавить</button><div id="'+k+'Editor"></div><div class="tablewrap" style="margin-top:12px"><table><thead><tr>'+recordFields[k].map(f=>'<th>'+esc(f)+'</th>').join('')+'<th>Файл</th><th>Действия</th></tr></thead><tbody>'+sectionRows[k].map(o=>'<tr>'+recordFields[k].map(f=>'<td>'+esc(o.data[f])+'</td>').join('')+'<td>'+(o.data.file_path?'<button data-file="'+o.id+'">Открыть</button>':'')+'</td><td><button data-edit-record="'+o.id+'">Изменить</button> <button class="danger" data-trash-record="'+o.id+'">В корзину</button></td></tr>').join('')+'</tbody></table></div>';
+ root.onclick=async e=>{const b=e.target.closest('button');if(!b)return;const row=sectionRows[k].find(o=>String(o.id)===(b.dataset.editRecord||b.dataset.file||b.dataset.trashRecord));if(b.hasAttribute('data-new'))editRecord(k);else if(b.dataset.editRecord)editRecord(k,row);else if(b.dataset.file&&row){const {data,error}=await db.storage.from('register-documents').createSignedUrl(row.data.file_path,60);if(error)alert(error.message);else location.href=data.signedUrl;}else if(b.dataset.trashRecord&&confirm('Переместить запись в корзину?')){const {error}=await db.from('register_records').update({deleted_at:new Date().toISOString()}).eq('id',row.id);if(error)alert(error.message);else loadSection(k);}};
+ }catch(e){root.textContent='Ошибка: '+e.message;}
+}
+function editRecord(k,row){
+ const editor=$(k+'Editor');const old=row?.data||{};
+ editor.innerHTML='<form class="panel"><div class="grid">'+recordFields[k].map((f,i)=>'<div><label>'+esc(f)+'</label>'+(k==='contract'&&i===0?'<select name="f0">'+['Магнит','RVI'].map(v=>'<option '+(old[f]===v?'selected':'')+'>'+v+'</option>').join('')+'</select>':'<input name="f'+i+'" value="'+esc(old[f])+'">')+'</div>').join('')+'</div><p><label>Прикрепить файл (до 20 МБ)</label><input type="file" name="attachment"></p><button type="submit">Сохранить</button> <button type="button" data-cancel>Отмена</button><p role="status"></p></form>';
+ const form=editor.querySelector('form');form.querySelector('[data-cancel]').onclick=()=>editor.innerHTML='';
+ form.onsubmit=async e=>{e.preventDefault();const btn=form.querySelector('[type=submit]');btn.disabled=true;const status=form.querySelector('[role=status]');try{const data={...old};recordFields[k].forEach((f,i)=>data[f]=form.elements['f'+i].value.trim());const file=form.elements.attachment.files[0];if(file){if(file.size>20*1024*1024)throw Error('Файл больше 20 МБ');const path=currentUser.id+'/'+crypto.randomUUID();const {error}=await db.storage.from('register-documents').upload(path,file);if(error)throw error;data.file_path=path;data.file_name=file.name;}const result=row?await db.from('register_records').update({data}).eq('id',row.id):await db.from('register_records').insert({kind:k,data});if(result.error)throw result.error;loadSection(k);}catch(e){status.textContent=e.message;btn.disabled=false;}};
+}
+
 const statuses=['Новый','На проверке','Подтверждён','В пути','Прибыл','Закрыт','Претензия'];
 let currentUser=null, allOrders=[], channel=null, poller=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function msg(id,text,ok=false){$(id).textContent=text||'';$(id).classList.toggle('success',!!ok)}
-function tab(id){['ordersTab','formTab','mailTab','statsTab'].forEach(x=>$(x).classList.toggle('hidden',x!==id));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id==='statsTab')renderStats()}
+function tab(id){['ordersTab','formTab','mailTab','statsTab',"receivingTab","claimTab","contractTab","documentTab","historyTab","trashTab"].forEach(x=>$(x).classList.toggle('hidden',x!==id));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));if(id==='statsTab')renderStats();if(sectionKinds.includes(id.replace('Tab','')))loadSection(id.replace('Tab',''))}
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function renderFields(row={}) {
  $('fields').innerHTML=columns.map(([key,label])=>{
@@ -136,7 +167,7 @@ function renderOrders(){
 async function loadOrders(showLoading=false){
  if(!currentUser)return;
  if(showLoading)$('orders').innerHTML='<tr><td colspan="10">Загружаем заказы…</td></tr>';
- const {data,error}=await db.from('orders').select('*').order('created_at',{ascending:false});
+ const {data,error}=await db.from('orders').select('*').is('deleted_at',null).order('created_at',{ascending:false});
  if(error){msg('message','Не удалось загрузить заказы: '+error.message);return;}
  allOrders=data||[];msg('message','');renderOrders();renderStats();
 }
@@ -176,7 +207,7 @@ $('addBtn').onclick=()=>openForm();$('newTabBtn').onclick=()=>openForm();$('canc
 $('orders').addEventListener('click',async e=>{
  const edit=e.target.closest('[data-edit]'), del=e.target.closest('[data-delete]');
  if(edit){const row=allOrders.find(o=>String(o.id)===edit.dataset.edit);if(row)openForm(row);}
- if(del){const id=del.dataset.delete;if(!confirm('Удалить этот заказ из общей базы?'))return;const {error}=await db.from('orders').delete().eq('id',id);if(error)alert('Не удалось удалить заказ: '+error.message);else await loadOrders(true);}
+ if(del){const id=del.dataset.delete;if(!confirm('Переместить заказ в корзину?'))return;const {error}=await db.from('orders').update({deleted_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',id);if(error)alert('Не удалось удалить заказ: '+error.message);else await loadOrders(true);}
 });
 $('orderForm').onsubmit=async e=>{
  e.preventDefault();const btn=$('saveBtn');btn.disabled=true;msg('formMsg','Сохраняем…');
