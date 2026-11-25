@@ -29,7 +29,7 @@ small{color:var(--muted)}.field-wide{grid-column:span 2}.stat{font-size:28px;fon
 .empty{text-align:center;padding:35px;color:var(--muted)}
 @media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.statgrid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.grid{grid-template-columns:1fr}.field-wide{grid-column:auto}header h1{font-size:21px}.panel{padding:15px}.row>*{flex:1 1 100%}.row button{flex:1}}
-</style>
+@media(min-width:1000px){main,.container,.wrap{max-width:none!important;width:calc(100% - 48px);margin-left:auto;margin-right:auto}.tabs{gap:6px;flex-wrap:wrap}.tabs button{padding:10px 12px;font-size:13px}.tablewrap table{min-width:3000px}.tablewrap td{padding:8px 10px;vertical-align:top}.tablewrap th{padding:8px 10px}.tablewrap th:nth-child(2),#orders td:nth-child(2){position:sticky;left:0;background:#f4f8f5;z-index:1}.tablewrap{max-height:65vh;overflow:auto}} </style>
 </head>
 <body>
 <header><h1>🌿 MAXMUDJON AGRO</h1><p>Управление заказами и поставками</p></header>
@@ -46,12 +46,12 @@ small{color:var(--muted)}.field-wide{grid-column:span 2}.stat{font-size:28px;fon
 </section>
 
 <div id="app" class="hidden">
-  <div class="notice">Общая база Supabase подключена. Заказы сохраняются на сервере и доступны обоим сотрудникам после входа в общий аккаунт. Изменения обновляются автоматически.</div>
+  <div class="notice">Общая база подключена. Данные синхронизируются автоматически.</div>
   <div class="row" style="margin-bottom:8px"><div><small id="who"></small></div><button id="logoutBtn" class="secondary">Выйти</button></div>
   <nav class="tabs">
     <button class="active" data-tab="ordersTab">📦 Заказы</button>
     <button data-tab="formTab" id="newTabBtn">＋ Новый заказ</button>
-    <button data-tab="mailTab">✉️ Почта X5</button>
+    <button data-tab="mailTab">✉️ Почта</button>
     <button data-tab="statsTab">📊 Статистика</button>
   <button data-tab="receivingTab">Приёмка</button><button data-tab="claimTab">Претензии</button><button data-tab="contractTab">Контракты</button><button data-tab="documentTab">Документы</button><button data-tab="historyTab">История изменений</button><button data-tab="trashTab">Корзина</button></nav>
 
